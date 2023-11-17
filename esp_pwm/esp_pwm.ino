@@ -51,7 +51,7 @@ void loop() {
     int cmd = command.toInt();
     
     double duty    = cmd * 100 / 255;
-    double periode = 1/double(freq/10000);
+    double periode = 1/0.028;
     double delta = periode * (duty/100);
     Serial.println(duty);
     Serial.println(periode);
