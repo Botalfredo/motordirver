@@ -16,70 +16,66 @@
 #define M3PH 13
 #define M4PH 14
 
-// the number of the LED pin
-const int ledPin = M3PWM;  // 16 corresponds to GPIO16
-
 String command;
 
 // setting PWM properties
 #define PWM_BASE_Freq 30000
-const float freq = PWM_BASE_Freq;
+#define PWM_LOW_Freq 5000
+#define M1PWM_CH 1
+#define PWM_Bits 8
 
-const int ledChannel = 0;
-const int resolution = 8;
-
+float freq = PWM_BASE_Freq;
 
 void setup() {
   Serial.begin(115200);
-  
-  pinMode(M3PH, OUTPUT);
-  digitalWrite(M3PH, HIGH);
-  
+
+  pinMode(M1PH, OUTPUT);
+  digitalWrite(M1PH, HIGH);
+
   // configure LED PWM functionalitites
-  ledcSetup(ledChannel, freq, resolution);
-  
-  // attach the channel to the GPIO to be controlled
-  ledcAttachPin(ledPin, ledChannel);
-  ledcAttachPin(M1PWM, ledChannel);
+  ledcSetup(M1PWM_CH, freq, PWM_Bits);
+  ledcAttachPin(M1PWM, M1PWM_CH);
 }
 
 void loop() {
+
+  // Réception commande uart
   if (Serial.available()) {
     command = Serial.readStringUntil('\n');
     Serial.println(command);
-    //ledcWrite(ledChannel,command.toInt());
-
-
     int cmd = command.toInt();
-    
-    double duty    = cmd * 100 / 255;
-    double periode = 1/(freq/1000000);
-    double delta = periode * (duty/100);
-    
-    Serial.println(duty);
-    Serial.println(periode,6);
-    Serial.println(delta,6);
-    
-    if(delta <= 4){
-      Serial.println("Changement fréquances");
+
+    setMotorSpeed(cmd, M1PWM_CH);
+  }
+}
+
+void setMotorSpeed(int cmd, int no_motor) {
+  if (cmd > pow(2, PWM_Bits)){ 
+    cmd = pow(2, PWM_Bits);
+  }
+  if (cmd != 0) {
+    // Calcul tu temps haut de la PWM
+    float duty = cmd / (pow(2, PWM_Bits) - 1);  //duty cycle
+    float periode = 1 / (freq / 1000000);       //période en us
+    float delta = periode * duty;               // temps haut en us
+
+    if (delta <= 5) { // Détection des moments haut inférieurs à 5 us  
+      periode = 5 / duty;
+      float freq_low = (1 / periode) * 1000000;   // Calcul de la nouvelle fréquence
+
+      if (freq_low <= 500) //limite de fréquances basses
+        freq_low = 500;
+
+      ledcSetup(no_motor, freq_low, PWM_Bits); // réglage fréquences basses
+
+    } else {
+      ledcSetup(no_motor, freq, PWM_Bits); // réglage fréquences hautes
     }
 
-    for(int i = 255 ; i>=cmd ; i--){
-      ledcWrite(ledChannel,i);
+    for (int i = 255; i >= cmd; i--) {
+      ledcWrite(no_motor, i);  // rampe décroissante pour que le controleur moteur acroche la commande
     }
+  } else {
+    ledcWrite(no_motor, 0); // rampe décroissante pour que le controleur moteur acroche la commande
   }
-//  ledcWrite(ledChannel, 255);
-//  for(int dutyCycle = 15; dutyCycle <= 255; dutyCycle++){   
-//    // changing the LED brightness with PWM
-//    ledcWrite(ledChannel, dutyCycle);
-//    delay(50);
-//  }
-//
-//   
-//  // decrease the LED brightness
-//  for(int dutyCycle = 255; dutyCycle >= 15; dutyCycle--){
-//    // changing the LED brightness with PWM
-//    ledcWrite(ledChannel, dutyCycle);   
-//    delay(50);
-//  }
 }
