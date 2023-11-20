@@ -22,7 +22,9 @@ const int ledPin = M3PWM;  // 16 corresponds to GPIO16
 String command;
 
 // setting PWM properties
-const int freq = 28000;
+#define PWM_BASE_Freq 30000
+const float freq = PWM_BASE_Freq;
+
 const int ledChannel = 0;
 const int resolution = 8;
 
@@ -51,13 +53,18 @@ void loop() {
     int cmd = command.toInt();
     
     double duty    = cmd * 100 / 255;
-    double periode = 1/0.028;
+    double periode = 1/(freq/1000000);
     double delta = periode * (duty/100);
+    
     Serial.println(duty);
-    Serial.println(periode);
-    Serial.println(delta);
+    Serial.println(periode,6);
+    Serial.println(delta,6);
+    
+    if(delta <= 4){
+      Serial.println("Changement fréquances");
+    }
+
     for(int i = 255 ; i>=cmd ; i--){
-      
       ledcWrite(ledChannel,i);
     }
   }
